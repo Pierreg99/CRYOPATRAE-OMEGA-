@@ -66,10 +66,30 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if git grep -Il '' -- . | xargs -r grep -Il $'\x00' >/dev/null; then
-            echo "Unexpected NUL byte found in a text file."
-            exit 1
-          fi
+          python3 - <<'PY'
+          import pathlib
+          import subprocess
+          import sys
+
+          tracked = subprocess.check_output([
+              "git", "ls-files", "-z",
+              "*.js", "*.mjs", "*.md", "*.html", "*.yaml", "*.yml", "*.json"
+          ]).split(b"\0")
+
+          bad = []
+          for raw in tracked:
+              if not raw:
+                  continue
+              path = pathlib.Path(raw.decode())
+              if b"\0" in path.read_bytes():
+                  bad.append(str(path))
+
+          if bad:
+              print("Unexpected NUL bytes in text files:")
+              print("\n".join(f" - {path}" for path in bad))
+              sys.exit(1)
+          PY
+
           if git grep -nE 'OPENROUTER_API_KEY=(sk-|[A-Za-z0-9_-]{20,})' -- ':!README.md' ':!PAPER.md' ':!*.html'; then
             echo "Potential API credential committed to the repository."
             exit 1
