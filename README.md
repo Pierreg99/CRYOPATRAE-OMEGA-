@@ -1,6 +1,14 @@
-# GLOSSOPETRAE
+# CRYOPATRAE OMEGA
+
+### GLOSSOPETRAE Research Engine
+
+[![CI](https://github.com/Pierreg99/CRYOPATRAE-OMEGA-/actions/workflows/ci.yml/badge.svg)](https://github.com/Pierreg99/CRYOPATRAE-OMEGA-/actions/workflows/ci.yml)
 
 ## Procedural Xenolinguistics — Language Generation, Acquisition, Covert Channels
+
+> [!NOTE]
+> **CRYOPATRAE OMEGA** is the maintained repository/distribution identity. The embedded research engine and its published research identity remain **GLOSSOPETRAE**, so API names and research references are intentionally preserved for compatibility and provenance.
+
 
 ```
    ╔══════════════════════════════════════════════════════════════════════╗
@@ -384,6 +392,21 @@ node test.mjs
 - **`bench/`** — GLOSSOPETRAE-BENCH: contamination-free evaluation suite for measuring language-generation quality. Uses held-out seeds not seen during development.
 - **`redteam/`** — Safety-generalization evaluation kit: tests whether safety training generalizes to procedurally-generated novel languages, or whether it's superficially anchored to known-language features.
 - **`validation/`** — Thesis validation suite: end-to-end checks that the core claims (blind spot → channel → detection flip → acquisition cliff → decoupling) hold under repeated runs.
+
+---
+
+## Repository Maintenance
+
+This distribution adds a presentation and reliability layer around the research release:
+
+- Material 3-inspired responsive UI overrides in `styles/material3.css`;
+- accessibility hooks including a skip link, visible focus states, and reduced-motion handling;
+- deterministic offline core tests that return a failing process status on regression;
+- GitHub Actions validation across Node.js 18, 20, and 22;
+- repository hygiene checks for accidental credentials and NUL bytes in tracked text sources;
+- a dedicated `SECURITY.md` for private vulnerability reporting and defensive maintenance scope.
+
+The maintenance track does **not** extend covert-delivery, guardrail-evasion, or exploitation capabilities.
 
 ---
 

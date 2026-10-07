@@ -1,99 +1,86 @@
 /**
- * GLOSSOPETRAE Test Script
+ * CRYOPATRAE OMEGA / GLOSSOPETRAE offline core tests
  * Run with: node test.mjs
  */
 
+import assert from 'node:assert/strict';
 import { Glossopetrae, PRESETS } from './src/Glossopetrae.js';
 
-console.log('========================================');
-console.log('   GLOSSOPETRAE v3.0 - Test Suite');
-console.log('========================================\n');
+let failures = 0;
+let passed = 0;
 
-// Test 1: Basic generation
-console.log('Test 1: Basic language generation...');
-try {
-  const lang1 = Glossopetrae.quick(12345);
-  console.log(`  Created: ${lang1.name}`);
-  console.log(`  Seed: ${lang1.seed}`);
-  console.log(`  Consonants: ${lang1.phonology.consonants.length}`);
-  console.log(`  Vowels: ${lang1.phonology.vowels.length}`);
-  console.log(`  Lexicon entries: ${lang1.lexicon.stats.totalEntries}`);
-  console.log('  PASS\n');
-} catch (e) {
-  console.log(`  FAIL: ${e.message}\n`);
-}
-
-// Test 2: Preset generation
-console.log('Test 2: Preset (Turkic) generation...');
-try {
-  const engine = new Glossopetrae({ ...PRESETS.turkic, seed: 54321 });
-  const lang2 = engine.generate();
-  console.log(`  Created: ${lang2.name}`);
-  console.log(`  Type: ${lang2.morphology.type}`);
-  console.log(`  Word Order: ${lang2.morphology.wordOrder.basic}`);
-  console.log(`  Cases: ${lang2.morphology.nominal.caseSystem.cases.length}`);
-  console.log('  PASS\n');
-} catch (e) {
-  console.log(`  FAIL: ${e.message}\n`);
-}
-
-// Test 3: Stone document generation
-console.log('Test 3: Stone document generation...');
-try {
-  const lang3 = Glossopetrae.quick(99999);
-  const stone = lang3.stone;
-  console.log(`  Stone length: ${stone.length} characters`);
-  console.log(`  Contains phonology section: ${stone.includes('Phonology')}`);
-  console.log(`  Contains morphology section: ${stone.includes('Morphology')}`);
-  console.log(`  Contains lexicon section: ${stone.includes('Lexicon')}`);
-  console.log('  PASS\n');
-} catch (e) {
-  console.log(`  FAIL: ${e.message}\n`);
-}
-
-// Test 4: Translation
-console.log('Test 4: Translation engine...');
-try {
-  const lang4 = Glossopetrae.quick(11111);
-  const translation = lang4.translationEngine.translateToConlang('The woman sees the dog.');
-  console.log(`  English: "The woman sees the dog."`);
-  console.log(`  ${lang4.name}: "${translation.target}"`);
-  console.log('  PASS\n');
-} catch (e) {
-  console.log(`  FAIL: ${e.message}\n`);
-}
-
-// Test 5: Deterministic generation
-console.log('Test 5: Deterministic generation (same seed = same language)...');
-try {
-  const langA = Glossopetrae.quick(77777);
-  const langB = Glossopetrae.quick(77777);
-  const match = langA.name === langB.name &&
-                langA.phonology.consonants.length === langB.phonology.consonants.length &&
-                langA.morphology.type === langB.morphology.type;
-  console.log(`  Language A: ${langA.name}`);
-  console.log(`  Language B: ${langB.name}`);
-  console.log(`  Match: ${match}`);
-  console.log(match ? '  PASS\n' : '  FAIL\n');
-} catch (e) {
-  console.log(`  FAIL: ${e.message}\n`);
-}
-
-// Test 6: Show sample lexicon
-console.log('Test 6: Sample lexicon entries...');
-try {
-  const lang6 = Glossopetrae.quick(33333);
-  const entries = lang6.lexicon.entries.slice(0, 10);
-  console.log('  First 10 entries:');
-  for (const entry of entries) {
-    console.log(`    ${entry.lemma.padEnd(15)} = ${entry.gloss}`);
+async function test(name, fn) {
+  process.stdout.write(`• ${name} ... `);
+  try {
+    await fn();
+    passed += 1;
+    console.log('PASS');
+  } catch (error) {
+    failures += 1;
+    console.error('FAIL');
+    console.error(`  ${error?.stack || error}`);
   }
-  console.log('  PASS\n');
-} catch (e) {
-  console.log(`  FAIL: ${e.message}\n`);
 }
 
-console.log('========================================');
-console.log('   All tests completed!');
-console.log('========================================');
-console.log('\nOpen index.html in a browser to use the web interface.');
+console.log('CRYOPATRAE OMEGA — GLOSSOPETRAE v3.1 core tests\n');
+
+await test('basic deterministic language generation', () => {
+  const lang = Glossopetrae.quick(12345);
+  assert.ok(lang.name);
+  assert.equal(lang.seed, 12345);
+  assert.ok(lang.phonology.consonants.length > 0);
+  assert.ok(lang.phonology.vowels.length > 0);
+  assert.ok(lang.lexicon.stats.totalEntries > 0);
+});
+
+await test('preset generation', () => {
+  const engine = new Glossopetrae({ ...PRESETS.turkic, seed: 54321 });
+  const lang = engine.generate();
+  assert.ok(lang.name);
+  assert.ok(lang.morphology.type);
+  assert.ok(lang.morphology.wordOrder.basic);
+  assert.ok(lang.morphology.nominal.caseSystem.cases.length >= 0);
+});
+
+await test('stone document generation', () => {
+  const lang = Glossopetrae.quick(99999);
+  assert.equal(typeof lang.stone, 'string');
+  assert.ok(lang.stone.length > 100);
+  assert.match(lang.stone, /Phonology/i);
+  assert.match(lang.stone, /Morphology/i);
+  assert.match(lang.stone, /Lexicon/i);
+});
+
+await test('translation engine', () => {
+  const lang = Glossopetrae.quick(11111);
+  const result = lang.translationEngine.translateToConlang('The woman sees the dog.');
+  assert.ok(result);
+  assert.equal(typeof result.target, 'string');
+  assert.ok(result.target.trim().length > 0);
+});
+
+await test('same seed produces the same core language shape', () => {
+  const a = Glossopetrae.quick(77777);
+  const b = Glossopetrae.quick(77777);
+  assert.equal(a.name, b.name);
+  assert.equal(a.phonology.consonants.length, b.phonology.consonants.length);
+  assert.equal(a.phonology.vowels.length, b.phonology.vowels.length);
+  assert.equal(a.morphology.type, b.morphology.type);
+});
+
+await test('lexicon exposes usable entries', () => {
+  const lang = Glossopetrae.quick(33333);
+  assert.ok(Array.isArray(lang.lexicon.entries));
+  assert.ok(lang.lexicon.entries.length >= 10);
+  for (const entry of lang.lexicon.entries.slice(0, 10)) {
+    assert.equal(typeof entry.lemma, 'string');
+    assert.equal(typeof entry.gloss, 'string');
+    assert.ok(entry.lemma.length > 0);
+    assert.ok(entry.gloss.length > 0);
+  }
+});
+
+console.log(`\nResult: ${passed} passed, ${failures} failed.`);
+if (failures > 0) {
+  process.exitCode = 1;
+}

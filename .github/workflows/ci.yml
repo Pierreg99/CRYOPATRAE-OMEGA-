@@ -1,0 +1,96 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "upgrade/**"]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Node ${{ matrix.node }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [18, 20, 22]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: ""
+
+      - name: Syntax-check engine sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          find src -type f -name '*.js' -print0 | xargs -0 -n1 node --check
+
+      - name: Syntax-check experiment harnesses
+        shell: bash
+        run: |
+          set -euo pipefail
+          find experiments -type f -name '*.mjs' -print0 | xargs -0 -n1 node --check
+
+      - name: Run offline core tests
+        run: node test.mjs
+
+      - name: Static web smoke checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s index.html
+          test -s README.md
+          grep -q '<title>' index.html
+          grep -q 'src/Glossopetrae.js' index.html
+
+  hygiene:
+    name: Repository hygiene
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Reject committed secrets and NUL bytes
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import pathlib
+          import subprocess
+          import sys
+
+          tracked = subprocess.check_output([
+              "git", "ls-files", "-z",
+              "*.js", "*.mjs", "*.md", "*.html", "*.yaml", "*.yml", "*.json"
+          ]).split(b"\0")
+
+          bad = []
+          for raw in tracked:
+              if not raw:
+                  continue
+              path = pathlib.Path(raw.decode())
+              if b"\0" in path.read_bytes():
+                  bad.append(str(path))
+
+          if bad:
+              print("Unexpected NUL bytes in text files:")
+              print("\n".join(f" - {path}" for path in bad))
+              sys.exit(1)
+          PY
+
+          if git grep -nE 'OPENROUTER_API_KEY=(sk-|[A-Za-z0-9_-]{20,})' -- ':!README.md' ':!PAPER.md' ':!*.html'; then
+            echo "Potential API credential committed to the repository."
+            exit 1
+          fi
